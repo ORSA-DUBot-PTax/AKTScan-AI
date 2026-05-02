@@ -1363,18 +1363,19 @@ def save_active_results_to_database(
     contributor_affiliation: str = "",
     contributor_email: str = "",
     save_contributor_info: bool = False,
-    batch_size: int = 500,
+    batch_size: int = 100,
 ) -> Dict[str, int]:
     """
-    Save predicted Active compounds using batched Supabase upsert.
+    Save predicted Active compounds using pure batched Supabase upsert.
 
-    This is designed for large screening jobs:
-    - deduplicates canonical SMILES inside the current batch
-    - avoids one SELECT + one INSERT/UPDATE per molecule
-    - relies on a PostgreSQL UNIQUE constraint on canonical_smiles
+    Why this version is safer for large batches:
+    - It does NOT run a long `.in_("canonical_smiles", many_smiles)` lookup.
+      Long SMILES lists can exceed URL length limits and cause:
+      "URL component 'query' too long".
+    - It deduplicates canonical SMILES inside the current prediction batch.
+    - It relies on the PostgreSQL UNIQUE constraint on canonical_smiles.
 
     Required Supabase SQL:
-
         alter table predicted_active_compounds
         add constraint unique_canonical_smiles unique (canonical_smiles);
     """
@@ -1386,8 +1387,6 @@ def save_active_results_to_database(
     supabase = get_supabase_client()
 
     skipped = 0
-    failed = 0
-
     records_by_smiles: Dict[str, Dict[str, object]] = {}
     batch_seen_counts: Dict[str, int] = {}
 
@@ -1406,6 +1405,9 @@ def save_active_results_to_database(
         canonical = str(record["canonical_smiles"])
         batch_seen_counts[canonical] = batch_seen_counts.get(canonical, 0) + 1
 
+        # Keep only one row per canonical SMILES in this upload.
+        # If the same canonical compound appears multiple times, keep the one
+        # with the strongest active probability.
         old_record = records_by_smiles.get(canonical)
         if old_record is None:
             records_by_smiles[canonical] = record
@@ -1423,51 +1425,27 @@ def save_active_results_to_database(
             "failed": 0,
         }
 
-    canonical_smiles_values = list(records_by_smiles.keys())
-
-    existing_by_smiles: Dict[str, Dict[str, object]] = {}
-    for smiles_chunk in chunked_list(canonical_smiles_values, batch_size):
-        try:
-            existing_response = (
-                supabase.table(ACTIVE_DATABASE_TABLE)
-                .select("canonical_smiles, run_count, probability_active, first_saved_at")
-                .in_("canonical_smiles", smiles_chunk)
-                .execute()
-            )
-            for row in existing_response.data or []:
-                existing_by_smiles[str(row.get("canonical_smiles"))] = row
-        except Exception as exc:
-            failed += len(smiles_chunk)
-            st.warning(f"Supabase lookup failed for one chunk: {exc}")
-
     upsert_payload: List[Dict[str, object]] = []
-    inserted = 0
-    updated = 0
+    duplicate_active_in_current_batch = 0
 
     for canonical, record in records_by_smiles.items():
-        existing = existing_by_smiles.get(canonical)
         current_batch_count = int(batch_seen_counts.get(canonical, 1))
+        record["run_count"] = current_batch_count
 
-        if existing:
-            updated += 1
-            existing_run_count = int(existing.get("run_count") or 0)
-            record["run_count"] = existing_run_count + current_batch_count
-            record["first_saved_at"] = existing.get("first_saved_at") or record["first_saved_at"]
-
-            old_probability = float(existing.get("probability_active") or -1.0)
-            new_probability = float(record.get("probability_active") or -1.0)
-            if new_probability < old_probability:
-                record["probability_active"] = existing.get("probability_active")
-        else:
-            inserted += 1
-            record["run_count"] = current_batch_count
+        if current_batch_count > 1:
+            duplicate_active_in_current_batch += current_batch_count - 1
 
         if not save_contributor_info:
+            # Avoid overwriting existing contributor values with null/empty data
+            # when the user did not explicitly consent to saving contributor info.
             record.pop("contributor_name", None)
             record.pop("contributor_affiliation", None)
             record.pop("contributor_email", None)
 
         upsert_payload.append(record)
+
+    saved = 0
+    failed = 0
 
     for payload_chunk in chunked_list(upsert_payload, batch_size):
         try:
@@ -1476,14 +1454,17 @@ def save_active_results_to_database(
                 .upsert(payload_chunk, on_conflict="canonical_smiles")
                 .execute()
             )
+            saved += len(payload_chunk)
         except Exception as exc:
             failed += len(payload_chunk)
             st.warning(f"Supabase upsert failed for one chunk: {exc}")
 
     return {
-        "inserted": max(0, inserted - failed),
-        "updated_existing": updated,
-        "skipped_nonactive_or_invalid": skipped,
+        # With pure upsert, Supabase does not cheaply tell us which rows were
+        # inserted vs updated. Treat successful upserts as saved.
+        "inserted": saved,
+        "updated_existing": 0,
+        "skipped_nonactive_or_invalid": skipped + duplicate_active_in_current_batch,
         "failed": failed,
     }
 
