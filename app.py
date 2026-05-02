@@ -69,7 +69,7 @@ AFFILIATION = (
 
 MODEL_FILE = "LightGBM.pkl"
 FEATURE_INDEX_FILE = "selected_feature_indices.npy"
-MAX_BATCH_MOLECULES = 30000
+MAX_BATCH_MOLECULES = 20000
 FINGERPRINT_BITS = 2048
 FINGERPRINT_RADIUS = 2
 DEFAULT_THRESHOLD = 0.50
@@ -2186,7 +2186,7 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
     if len(smiles_list) > 10000:
         st.warning(
             "Large batches can take several minutes and may be limited by Streamlit Cloud memory/time. "
-            "For 30,000+ molecules, consider splitting the file and run part by part."
+            "For 20,000+ molecules, consider splitting the file and run part by part."
         )
 
     with st.form("batch_prediction_form", clear_on_submit=False):
