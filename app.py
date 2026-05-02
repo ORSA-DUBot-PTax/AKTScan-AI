@@ -69,7 +69,7 @@ AFFILIATION = (
 
 MODEL_FILE = "LightGBM.pkl"
 FEATURE_INDEX_FILE = "selected_feature_indices.npy"
-MAX_BATCH_MOLECULES = 50000
+MAX_BATCH_MOLECULES = 3000
 FINGERPRINT_BITS = 2048
 FINGERPRINT_RADIUS = 2
 DEFAULT_THRESHOLD = 0.50
@@ -1351,13 +1351,33 @@ def database_record_from_result(
     }
 
 
+def chunked_list(items: List[object], chunk_size: int = 500) -> Iterable[List[object]]:
+    """Yield fixed-size chunks. Used to keep Supabase requests small."""
+    for i in range(0, len(items), chunk_size):
+        yield items[i:i + chunk_size]
+
+
 def save_active_results_to_database(
     results: List[PredictionResult],
     contributor_name: str = "",
     contributor_affiliation: str = "",
     contributor_email: str = "",
     save_contributor_info: bool = False,
+    batch_size: int = 500,
 ) -> Dict[str, int]:
+    """
+    Save predicted Active compounds using batched Supabase upsert.
+
+    This is designed for large screening jobs:
+    - deduplicates canonical SMILES inside the current batch
+    - avoids one SELECT + one INSERT/UPDATE per molecule
+    - relies on a PostgreSQL UNIQUE constraint on canonical_smiles
+
+    Required Supabase SQL:
+
+        alter table predicted_active_compounds
+        add constraint unique_canonical_smiles unique (canonical_smiles);
+    """
     if not save_contributor_info:
         contributor_name = ""
         contributor_affiliation = ""
@@ -1365,10 +1385,11 @@ def save_active_results_to_database(
 
     supabase = get_supabase_client()
 
-    inserted = 0
-    updated = 0
     skipped = 0
     failed = 0
+
+    records_by_smiles: Dict[str, Dict[str, object]] = {}
+    batch_seen_counts: Dict[str, int] = {}
 
     for result in results:
         record = database_record_from_result(
@@ -1382,83 +1403,85 @@ def save_active_results_to_database(
             skipped += 1
             continue
 
+        canonical = str(record["canonical_smiles"])
+        batch_seen_counts[canonical] = batch_seen_counts.get(canonical, 0) + 1
+
+        old_record = records_by_smiles.get(canonical)
+        if old_record is None:
+            records_by_smiles[canonical] = record
+        else:
+            old_probability = float(old_record.get("probability_active") or -1.0)
+            new_probability = float(record.get("probability_active") or -1.0)
+            if new_probability > old_probability:
+                records_by_smiles[canonical] = record
+
+    if not records_by_smiles:
+        return {
+            "inserted": 0,
+            "updated_existing": 0,
+            "skipped_nonactive_or_invalid": skipped,
+            "failed": 0,
+        }
+
+    canonical_smiles_values = list(records_by_smiles.keys())
+
+    existing_by_smiles: Dict[str, Dict[str, object]] = {}
+    for smiles_chunk in chunked_list(canonical_smiles_values, batch_size):
         try:
             existing_response = (
                 supabase.table(ACTIVE_DATABASE_TABLE)
-                .select("compound_id, run_count, probability_active")
-                .eq("canonical_smiles", record["canonical_smiles"])
-                .limit(1)
+                .select("canonical_smiles, run_count, probability_active, first_saved_at")
+                .in_("canonical_smiles", smiles_chunk)
                 .execute()
             )
-            existing_data = existing_response.data or []
-
-            if existing_data:
-                existing = existing_data[0]
-                old_probability = existing.get("probability_active")
-                old_probability = float(old_probability) if old_probability is not None else -1.0
-                new_probability = float(record["probability_active"] or -1.0)
-
-                update_payload = {
-                    "last_seen_at": record["last_seen_at"],
-                    "run_count": int(existing.get("run_count") or 1) + 1,
-                }
-
-                # If contributor consent is provided, update/backfill contributor fields
-                # for existing duplicate compounds as well.
-                if save_contributor_info:
-                    contributor_update_fields = {
-                        "contributor_name": record.get("contributor_name"),
-                        "contributor_affiliation": record.get("contributor_affiliation"),
-                        "contributor_email": record.get("contributor_email"),
-                    }
-                    for field_name, field_value in contributor_update_fields.items():
-                        if field_value is not None and str(field_value).strip():
-                            update_payload[field_name] = str(field_value).strip()
-
-                # Keep strongest prediction metadata if the same canonical compound appears again.
-                if new_probability > old_probability:
-                    update_payload.update(
-                        {
-                            "probability_active": record["probability_active"],
-                            "probability_inactive": record["probability_inactive"],
-                            "prediction_confidence_label": record["prediction_confidence_label"],
-                            "prediction_confidence_margin": record["prediction_confidence_margin"],
-                            "applicability_domain_status": record["applicability_domain_status"],
-                            "applicability_domain_reliability": record["applicability_domain_reliability"],
-                            "applicability_domain_score": record["applicability_domain_score"],
-                            "structural_alert_flag": record["structural_alert_flag"],
-                            "structural_alert_count": record["structural_alert_count"],
-                            "pains_alert_count": record["pains_alert_count"],
-                            "brenk_alert_count": record["brenk_alert_count"],
-                            "structural_alert_summary": record["structural_alert_summary"],
-                            "nearest_reference_inhibitor": record["nearest_reference_inhibitor"],
-                            "nearest_reference_type": record["nearest_reference_type"],
-                            "max_tanimoto_similarity": record["max_tanimoto_similarity"],
-                            "similarity_interpretation": record["similarity_interpretation"],
-                            "top_3_scaffold_matches": record["top_3_scaffold_matches"],
-                            "molecular_weight": record["molecular_weight"],
-                            "logp_crippen": record["logp_crippen"],
-                            "tpsa": record["tpsa"],
-                            "qed": record["qed"],
-                            "lipinski_ro5_pass": record["lipinski_ro5_pass"],
-                        }
-                    )
-
-                supabase.table(ACTIVE_DATABASE_TABLE).update(update_payload).eq(
-                    "canonical_smiles", record["canonical_smiles"]
-                ).execute()
-                updated += 1
-
-            else:
-                supabase.table(ACTIVE_DATABASE_TABLE).insert(record).execute()
-                inserted += 1
-
+            for row in existing_response.data or []:
+                existing_by_smiles[str(row.get("canonical_smiles"))] = row
         except Exception as exc:
-            failed += 1
-            st.warning(f"Supabase save failed for one compound: {exc}")
+            failed += len(smiles_chunk)
+            st.warning(f"Supabase lookup failed for one chunk: {exc}")
+
+    upsert_payload: List[Dict[str, object]] = []
+    inserted = 0
+    updated = 0
+
+    for canonical, record in records_by_smiles.items():
+        existing = existing_by_smiles.get(canonical)
+        current_batch_count = int(batch_seen_counts.get(canonical, 1))
+
+        if existing:
+            updated += 1
+            existing_run_count = int(existing.get("run_count") or 0)
+            record["run_count"] = existing_run_count + current_batch_count
+            record["first_saved_at"] = existing.get("first_saved_at") or record["first_saved_at"]
+
+            old_probability = float(existing.get("probability_active") or -1.0)
+            new_probability = float(record.get("probability_active") or -1.0)
+            if new_probability < old_probability:
+                record["probability_active"] = existing.get("probability_active")
+        else:
+            inserted += 1
+            record["run_count"] = current_batch_count
+
+        if not save_contributor_info:
+            record.pop("contributor_name", None)
+            record.pop("contributor_affiliation", None)
+            record.pop("contributor_email", None)
+
+        upsert_payload.append(record)
+
+    for payload_chunk in chunked_list(upsert_payload, batch_size):
+        try:
+            (
+                supabase.table(ACTIVE_DATABASE_TABLE)
+                .upsert(payload_chunk, on_conflict="canonical_smiles")
+                .execute()
+            )
+        except Exception as exc:
+            failed += len(payload_chunk)
+            st.warning(f"Supabase upsert failed for one chunk: {exc}")
 
     return {
-        "inserted": inserted,
+        "inserted": max(0, inserted - failed),
         "updated_existing": updated,
         "skipped_nonactive_or_invalid": skipped,
         "failed": failed,
@@ -2179,6 +2202,12 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
         f"Current batch size from {source_label or 'input'}: **{len(smiles_list):,}** molecule(s)."
     )
 
+    if len(smiles_list) > 10000:
+        st.warning(
+            "Large batches can take several minutes and may be limited by Streamlit Cloud memory/time. "
+            "For 40,000+ molecules, consider splitting the file or running locally."
+        )
+
     with st.form("batch_prediction_form", clear_on_submit=False):
         contributor_name, contributor_affiliation, contributor_email, save_contributor_info = render_contributor_inputs("batch")
 
@@ -2240,6 +2269,19 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
         status_box.success(f"Batch prediction completed in {elapsed:.4f} seconds.")
 
         df = results_to_dataframe(results)
+
+        # Store prediction results BEFORE database saving.
+        # This prevents the result table from being delayed by Supabase writes.
+        st.session_state.batch_results_df = df
+        st.session_state.batch_elapsed = elapsed
+        st.session_state.batch_source_label = source_label
+        st.session_state.batch_completed = True
+
+        active_to_save = int((df["Prediction"] == "Active").sum()) if "Prediction" in df.columns else 0
+        st.success(
+            f"Prediction results are ready. Preparing to save {active_to_save:,} predicted Active compound(s) to Supabase..."
+        )
+
         db_save_summary = save_active_results_to_database(
             results,
             contributor_name=contributor_name,
@@ -2248,11 +2290,6 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
             save_contributor_info=save_contributor_info,
         )
         st.session_state.last_database_save_summary = db_save_summary
-
-        st.session_state.batch_results_df = df
-        st.session_state.batch_elapsed = elapsed
-        st.session_state.batch_source_label = source_label
-        st.session_state.batch_completed = True
 
     if st.session_state.batch_completed and st.session_state.batch_results_df is not None:
         df = st.session_state.batch_results_df
