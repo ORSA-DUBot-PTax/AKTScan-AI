@@ -8,3 +8,4 @@ lightgbm
 xgboost
 supabase
 pillow
+imbalanced-learn
