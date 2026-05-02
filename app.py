@@ -2186,7 +2186,7 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
     if len(smiles_list) > 10000:
         st.warning(
             "Large batches can take several minutes and may be limited by Streamlit Cloud memory/time. "
-            "For 40,000+ molecules, consider splitting the file or running locally."
+            "For 30,000+ molecules, consider splitting the file and run part by part."
         )
 
     with st.form("batch_prediction_form", clear_on_submit=False):
