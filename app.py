@@ -1823,22 +1823,7 @@ def render_active_library_method_note() -> None:
         <div class="section-card">
             <h3>🗄️ Predicted Active Compound Database / AKT1 Active Library</h3>
             <p>
-            The <strong>AKT1 Active Library</strong> is a continuously growing Supabase-backed repository
-            of unique compounds predicted as Active by AKT-Scan AI. Each saved compound is assigned a stable
-            AKT-ACT identifier, and duplicate entries are prevented using canonical SMILES-based matching.
-            </p>
-            <p>
-            As more users screen molecules, the library can gradually become a curated resource of
-            machine-learning-prioritized AKT1-focused chemical matter. This can support future hit
-            prioritization, scaffold comparison, compound triage, contributor tracking, and downstream
-            medicinal-chemistry analysis.
-            </p>
-            <p class="small-note">
-            Predicted Active compounds are deposited into this library only when the user explicitly checks
-            the contributor-section consent box before prediction. Future implementation may connect this
-            predicted-active library with structure-based drug design workflows, including docking,
-            pharmacophore modeling, molecular dynamics prioritization, scaffold clustering, and lead-optimization
-            campaigns. All entries remain computational predictions and require experimental validation.
+            The <strong>AKT1 Active Library</strong> is a continuously growing Supabase backed repository of unique compounds predicted as Active by AKT Scan AI, where each compound is assigned a stable AKT ACT identifier and duplicates are prevented using canonical SMILES matching. The library currently contains <strong>15,780 predicted Active compounds</strong> derived from large scale screening, including <strong>2,233 compounds from CMAUP</strong>, <strong>159 from MeFSAT</strong>, and <strong>13,388 from the LOTUS database</strong> out of a total of 276,518 screened compounds. This ever expanding collection supports scaffold exploration, hit prioritization, and downstream medicinal chemistry analysis as new compounds are continuously added. Compounds are deposited only when contributor consent is provided, and all entries represent computational predictions that require experimental validation.
             </p>
         </div>
         """,
