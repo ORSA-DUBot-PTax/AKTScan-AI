@@ -150,45 +150,6 @@ flowchart TD
 
 ---
 
-# 📂 Project Structure
-
-A recommended repository structure is shown below:
-
-```text
-AKT-Scan-AI/
-│
-├── app.py
-├── LightGBM.pkl
-├── selected_feature_indices.npy
-├── requirements.txt
-├── README.md
-│
-├── scripts/
-│   ├── 01_download_chembl_akt1.py
-│   ├── 02_prepare_akt1_dataset.py
-│   └── 03_train_lightgbm_model.py
-│
-├── data/
-│   ├── chembl_AKT_raw.csv
-│   ├── test_train_data.csv
-│   └── external_validation_data.csv
-│
-├── outputs/
-│   ├── final_LightGBM.pkl
-│   ├── selected_feature_indices.npy
-│   ├── screening_predictions_LightGBM.csv
-│   ├── label_encoding.txt
-│   ├── roc_curves/
-│   └── roc_csv/
-│
-└── .streamlit/
-    └── secrets.toml
-```
-
-> **Note:** The deployed app expects `LightGBM.pkl` and `selected_feature_indices.npy` to be placed in the same directory as `app.py`.
-
----
-
 # 🧾 Dataset Collection
 
 ## Source Database
