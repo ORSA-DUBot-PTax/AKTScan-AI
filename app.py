@@ -1759,7 +1759,7 @@ def render_intro() -> None:
             where compounds predicted as Active are stored as unique chemical entities. 
             This evolving repository enables accumulation of model-consistent 
             AKT1-focused chemical space across user submissions, supporting scaffold 
-            exploration, prioritization consistency, and future data-driven refinement. For more details, please visit: <strong>https://github.com/ORSA-DUBot-PTax/AKTScan-AI</strong>
+            exploration, prioritization consistency, and future data-driven refinement.
             </p>
             <p class="small-note">
             Predictions are computational estimates and should be interpreted as decision-support
@@ -1823,12 +1823,69 @@ def render_active_library_method_note() -> None:
         <div class="section-card">
             <h3>🗄️ Predicted Active Compound Database / AKT1 Active Library</h3>
             <p>
-            The <strong>AKT1 Active Library</strong> is a continuously growing Supabase backed repository of unique compounds predicted as Active by AKT Scan AI, where each compound is assigned a stable AKT ACT identifier and duplicates are prevented using canonical SMILES matching. The library currently contains <strong>15,780 predicted Active compounds</strong> derived from large scale screening, including <strong>2,233 compounds from CMAUP</strong>, <strong>159 from MeFSAT</strong>, and <strong>13,388 from the LOTUS database</strong> out of a total of 276,518 screened compounds. This ever expanding collection supports scaffold exploration, hit prioritization, and downstream medicinal chemistry analysis as new compounds are continuously added. Compounds are deposited only when contributor consent is provided, and all entries represent computational predictions that require experimental validation.
+            The <strong>AKT1 Active Library</strong> is a continuously growing Supabase-backed repository
+            of unique compounds predicted as Active by AKT-Scan AI. Each saved compound is assigned a stable
+            AKT-ACT identifier, and duplicate entries are prevented using canonical SMILES-based matching.
+            </p>
+            <p>
+            As more users screen molecules, the library can gradually become a curated resource of
+            machine-learning-prioritized AKT1-focused chemical matter. This can support future hit
+            prioritization, scaffold comparison, compound triage, contributor tracking, and downstream
+            medicinal-chemistry analysis.
+            </p>
+            <p class="small-note">
+            Predicted Active compounds are deposited into this library only when the user explicitly checks
+            the contributor-section consent box before prediction. Future implementation may connect this
+            predicted-active library with structure-based drug design workflows, including docking,
+            pharmacophore modeling, molecular dynamics prioritization, scaffold clustering, and lead-optimization
+            campaigns. All entries remain computational predictions and require experimental validation.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_workflow_section() -> None:
+    st.markdown(
+        """
+        <div class="section-card performance-card">
+            <h3>🧭 AKT-Scan AI Complete Workflow</h3>
+            <p>
+            This workflow summarizes the full AKT-Scan AI pipeline, from ChEMBL-based AKT1
+            bioactivity data collection and dataset preparation to molecular fingerprinting,
+            feature selection, LightGBM model development, Streamlit deployment, prediction
+            enrichment, and Supabase PostgreSQL-backed active-compound library construction.
+            </p>
+            <p class="small-note">
+            The figure is shown here to help users, reviewers, and researchers understand how
+            the model was developed and how submitted SMILES are processed inside the app.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    workflow_path = "workflow.jpg"
+
+    if os.path.exists(workflow_path):
+        st.image(
+            workflow_path,
+            caption="AKT-Scan AI workflow: from AKT1 data collection to prediction and active-compound library.",
+            use_container_width=True,
+        )
+
+        with open(workflow_path, "rb") as workflow_file:
+            st.download_button(
+                label="⬇️ Download Workflow Figure",
+                data=workflow_file,
+                file_name="AKT_Scan_AI_Workflow.jpg",
+                mime="image/jpeg",
+                use_container_width=True,
+                key="download_workflow_figure",
+            )
+    else:
+        st.warning("Workflow image not found. Please place `workflow.jpg` in the same directory as `app.py`.")
 
 
 def render_sidebar(model_ready: bool, selected_indices: Optional[np.ndarray]) -> float:
@@ -1894,13 +1951,14 @@ def render_performance_section() -> None:
 
 
 def render_top_info_tabs() -> None:
-    about_tab, performance_tab, similarity_tab, phase1_tab, library_tab = st.tabs(
+    about_tab, performance_tab, similarity_tab, phase1_tab, library_tab, workflow_tab = st.tabs(
         [
             "🌿 About",
             "📊 ML Performance and Model Information",
             "🔬 Scaffold Similarity Analysis",
             "🛡️ Reliability and Safety Screening",
             "🗄️ AKT1 Active Library",
+            "🧭 Workflow",
         ]
     )
 
@@ -1918,6 +1976,9 @@ def render_top_info_tabs() -> None:
 
     with library_tab:
         render_active_library_method_note()
+
+    with workflow_tab:
+        render_workflow_section()
 
 
 def render_metric_grid(metrics: Dict[str, float]) -> None:
