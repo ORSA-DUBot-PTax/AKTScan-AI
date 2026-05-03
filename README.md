@@ -42,7 +42,7 @@ The goal of AKT-Scan AI is to support early-stage anticancer compound prioritiza
 
 ---
 
-## 🧬 Target Protein
+##  Target Protein
 
 | Item | Description |
 |---|---|
@@ -56,7 +56,7 @@ AKT1 is a key kinase involved in cell survival, proliferation, metabolism, and c
 
 ---
 
-## 🧪 Key Features
+##  Key Features
 
 ### 🔹 Machine Learning
 
@@ -105,33 +105,8 @@ AKT1 is a key kinase involved in cell survival, proliferation, metabolism, and c
 
 ---
 
-## 🧠 Repository Keywords / Suggested GitHub Topics
 
-```text
-akt1
-akt-inhibitor
-drug-discovery
-machine-learning
-lightgbm
-chembl
-rdkit
-cheminformatics
-morgan-fingerprint
-streamlit
-supabase
-postgresql
-bioactivity-prediction
-virtual-screening
-adme
-qed
-pains
-brenk
-cancer-research
-```
-
----
-
-## 🧭 Complete Workflow
+##  Complete Workflow
 
 ```mermaid
 flowchart TD
@@ -152,7 +127,7 @@ flowchart TD
 
 ---
 
-# 🧾 Dataset Collection
+#  Dataset Collection
 
 ## Source Database
 
@@ -237,7 +212,7 @@ print("Downloaded molecules:", len(df))
 
 ---
 
-# 🧹 Dataset Preparation
+#  Dataset Preparation
 
 Although IC50, Ki, and Kd values were initially retrieved, the final supervised machine-learning dataset was prepared using only:
 
@@ -394,7 +369,7 @@ print(f"Log saved to {LOG_FILE}")
 
 ---
 
-# 🌍 External Validation Dataset
+#  External Validation Dataset
 
 An independent external validation dataset was prepared using compounds that were **not included in model training**.
 
@@ -410,7 +385,7 @@ This dataset was used only for final external validation of the trained model.
 
 ---
 
-# 🧬 Molecular Representation
+#  Molecular Representation
 
 Each compound was represented using a binary Morgan fingerprint generated from its SMILES structure.
 
@@ -433,7 +408,7 @@ Invalid SMILES strings were removed from model training and flagged during appli
 
 ---
 
-# 🔬 Feature Selection
+#  Feature Selection
 
 Feature selection was performed using:
 
@@ -565,7 +540,7 @@ Independent external validation
 
 ---
 
-# 📊 Model Performance
+#  Model Performance
 
 ## Five-Fold Cross-Validation Performance
 
@@ -622,7 +597,7 @@ Specificity = TN / (TN + FP)
 
 ---
 
-# 💾 Model Export
+#  Model Export
 
 After training, the final LightGBM model was saved using `joblib`.
 
@@ -641,7 +616,7 @@ app.py
 
 ---
 
-# 🚀 AKT-Scan AI Web Application
+#  AKT-Scan AI Web Application
 
 The final model was deployed as an interactive web application using:
 
@@ -722,7 +697,7 @@ Users can adjust this threshold from the Streamlit sidebar.
 
 ---
 
-# 🧪 Drug-Likeness and ADME Profiling
+#  Drug-Likeness and ADME Profiling
 
 AKT-Scan AI calculates multiple molecular descriptors using RDKit.
 
@@ -766,7 +741,7 @@ These descriptors are provided for interpretation and prioritization. They are n
 
 ---
 
-# 🔬 Scaffold Similarity Analysis
+#  Scaffold Similarity Analysis
 
 AKT-Scan AI compares each query molecule against a curated set of AKT inhibitor reference compounds.
 
@@ -794,7 +769,7 @@ Similarity interpretation
 
 ---
 
-# 🛡️ Prediction Reliability
+#  Prediction Reliability
 
 ## Prediction Confidence
 
@@ -828,7 +803,7 @@ This applicability-domain estimate provides structural support for interpreting 
 
 ---
 
-# 🚩 Structural-Alert Screening
+#  Structural-Alert Screening
 
 The app screens molecules using RDKit structural-alert catalogs when available.
 
@@ -853,7 +828,7 @@ Structural alerts are medicinal-chemistry warning flags and should not be interp
 
 ---
 
-# 🗄️ Supabase PostgreSQL Integration
+#  Supabase PostgreSQL Integration
 
 AKT-Scan AI includes a Supabase PostgreSQL-backed database called the:
 
@@ -896,7 +871,7 @@ Canonical SMILES are used to prevent duplicate compound entries.
 ---
 
 
-# 💻 Installation
+#  Installation
 
 ## 1. Clone the Repository
 
@@ -964,7 +939,7 @@ conda install -c conda-forge rdkit
 
 ---
 
-# ▶️ Running the App
+#  Running the App
 
 Make sure the following files are in the same folder as `app.py`:
 
@@ -983,7 +958,7 @@ The app will open in your browser.
 
 ---
 
-# 📥 Input Format
+#  Input Format
 
 ## Single SMILES Input
 
@@ -1018,7 +993,7 @@ smile
 
 ---
 
-# 📤 Output Files
+#  Output Files
 
 The app and training pipeline generate outputs such as:
 
@@ -1034,7 +1009,7 @@ label_encoding.txt
 
 ---
 
-# 🧾 Prediction Output Columns
+#  Prediction Output Columns
 
 Batch screening output may include:
 
@@ -1101,7 +1076,7 @@ AKT-Scan AI is a computational prediction tool and has important limitations:
 
 ---
 
-# 🧭 Future Development
+#  Future Development
 
 Planned or possible future improvements include:
 
@@ -1169,7 +1144,7 @@ MIT License
 
 ---
 
-# ⚠️ Disclaimer
+#  Disclaimer
 
 AKT-Scan AI is intended for research and educational purposes only.
 
@@ -1179,7 +1154,7 @@ This tool is not intended for clinical decision-making, diagnosis, treatment pla
 
 ---
 
-# ⭐ Project Summary
+#  Project Summary
 
 AKT-Scan AI integrates machine learning, cheminformatics, bioactivity prediction, drug-likeness analysis, scaffold similarity, structural-alert screening, and database-backed active compound collection into a single Streamlit application for AKT1-focused virtual screening.
 
