@@ -465,7 +465,7 @@ During final model training, SelectKBest was refitted on the full training datas
 
 ---
 
-# 🤖 Machine Learning Model Development
+# Machine Learning Model Development
 
 ## Models Evaluated
 
@@ -893,105 +893,6 @@ Canonical SMILES are used to prevent duplicate compound entries.
 
 ---
 
-## Supabase Database Schema
-
-Run the following SQL in the Supabase SQL editor:
-
-```sql
-create table if not exists public.predicted_active_compounds (
-    compound_id text primary key,
-    canonical_smiles text unique not null,
-    first_input_smiles text,
-
-    prediction text,
-    probability_active double precision,
-    probability_inactive double precision,
-
-    prediction_confidence_label text,
-    prediction_confidence_margin double precision,
-
-    applicability_domain_status text,
-    applicability_domain_reliability text,
-    applicability_domain_score double precision,
-
-    structural_alert_flag text,
-    structural_alert_count integer,
-    pains_alert_count integer,
-    brenk_alert_count integer,
-    structural_alert_summary text,
-
-    nearest_reference_inhibitor text,
-    nearest_reference_type text,
-    max_tanimoto_similarity double precision,
-    similarity_interpretation text,
-    top_3_scaffold_matches text,
-
-    molecular_weight double precision,
-    logp_crippen double precision,
-    tpsa double precision,
-    qed double precision,
-    lipinski_ro5_pass text,
-
-    contributor_name text,
-    contributor_affiliation text,
-    contributor_email text,
-
-    first_saved_at timestamptz,
-    last_seen_at timestamptz,
-    run_count integer default 1
-);
-
-alter table public.predicted_active_compounds
-add constraint unique_canonical_smiles unique (canonical_smiles);
-```
-
----
-
-## Streamlit Secrets
-
-Create a file:
-
-```text
-.streamlit/secrets.toml
-```
-
-Add your Supabase credentials:
-
-```toml
-SUPABASE_URL = "https://your-project-id.supabase.co"
-SUPABASE_KEY = "your-supabase-key"
-```
-
-Do **not** commit `.streamlit/secrets.toml` to GitHub.
-
-Add this to `.gitignore`:
-
-```text
-.streamlit/secrets.toml
-```
-
----
-
-## Optional Row Level Security
-
-For a private research prototype, Supabase access can be managed using server-side Streamlit secrets.
-
-For public deployment, configure Row Level Security according to your access policy.
-
-Example read policy:
-
-```sql
-alter table public.predicted_active_compounds enable row level security;
-
-create policy "Allow public read access"
-on public.predicted_active_compounds
-for select
-using (true);
-```
-
-Write access should be restricted unless public deposition is intentionally allowed.
-
----
 
 # 💻 Installation
 
@@ -1077,78 +978,6 @@ streamlit run app.py
 ```
 
 The app will open in your browser.
-
----
-
-# 🧪 Reproducing the Dataset and Model
-
-## Step 1: Download ChEMBL AKT1 Data
-
-```bash
-python scripts/01_download_chembl_akt1.py
-```
-
-Output:
-
-```text
-chembl_AKT_raw.csv
-```
-
----
-
-## Step 2: Prepare Dataset
-
-```bash
-python scripts/02_prepare_akt1_dataset.py
-```
-
-Outputs:
-
-```text
-test_train_data.csv
-dataset_log.txt
-```
-
----
-
-## Step 3: Train Machine Learning Models
-
-```bash
-python scripts/03_train_lightgbm_model.py
-```
-
-Expected outputs:
-
-```text
-outputs/final_LightGBM.pkl
-outputs/selected_feature_indices.npy
-outputs/screening_predictions_LightGBM.csv
-outputs/roc_curves/
-outputs/roc_csv/
-```
-
----
-
-## Step 4: Prepare Model for Deployment
-
-Copy or rename:
-
-```text
-outputs/final_LightGBM.pkl
-```
-
-to:
-
-```text
-LightGBM.pkl
-```
-
-Place these files beside `app.py`:
-
-```text
-LightGBM.pkl
-selected_feature_indices.npy
-```
 
 ---
 
@@ -1241,7 +1070,7 @@ Error
 
 ---
 
-# 🧑‍🔬 Intended Use
+#  Intended Use
 
 AKT-Scan AI is intended for:
 
@@ -1255,7 +1084,7 @@ AKT-Scan AI is intended for:
 
 ---
 
-# ⚠️ Limitations
+#  Limitations
 
 AKT-Scan AI is a computational prediction tool and has important limitations:
 
@@ -1289,7 +1118,7 @@ Planned or possible future improvements include:
 
 ---
 
-# 🔐 Data and Security Notes
+#  Data and Security Notes
 
 - Supabase credentials should be stored only in `.streamlit/secrets.toml`.
 - Do not upload API keys or database secrets to GitHub.
@@ -1299,7 +1128,7 @@ Planned or possible future improvements include:
 
 ---
 
-# 📚 References and Tools
+#  References and Tools
 
 This project uses or builds upon the following major tools and resources:
 
@@ -1316,7 +1145,7 @@ This project uses or builds upon the following major tools and resources:
 
 ---
 
-# 👨‍🔬 Developers
+#  Developers
 
 **Developed by:**
 
@@ -1330,35 +1159,11 @@ University of Dhaka
 
 ---
 
-# 📖 Suggested Citation
-
-If you use AKT-Scan AI in academic work, please cite the repository or associated publication.
-
-```bibtex
-@software{akt_scan_ai,
-  title = {AKT-Scan AI: A High-Throughput Machine Learning Platform for SMILES-Based Bioactivity Screening and Drug-Likeness Profiling Targeting AKT1},
-  author = {Ahmed, Sheikh Sunzid and Rahman, M. Oliur},
-  year = {2026},
-  url = {https://github.com/your-username/AKT-Scan-AI}
-}
-```
-
----
-
-# 📜 License
-
-Add your selected license before public release.
-
-Recommended options:
+#  License
 
 ```text
 MIT License
-Apache License 2.0
-GNU GPL v3.0
-Academic / Non-commercial License
 ```
-
-If no license file is provided, all rights are reserved by default.
 
 ---
 
