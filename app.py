@@ -1759,7 +1759,7 @@ def render_intro() -> None:
             where compounds predicted as Active are stored as unique chemical entities. 
             This evolving repository enables accumulation of model-consistent 
             AKT1-focused chemical space across user submissions, supporting scaffold 
-            exploration, prioritization consistency, and future data-driven refinement.
+            exploration, prioritization consistency, and future data-driven refinement. For more details, please visit: <strong>https://github.com/ORSA-DUBot-PTax/AKTScan-AI</strong>
             </p>
             <p class="small-note">
             Predictions are computational estimates and should be interpreted as decision-support
