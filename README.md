@@ -36,7 +36,9 @@ The platform combines:
 - Streamlit-based interactive deployment
 - Supabase PostgreSQL-backed predicted active compound database
 
-The goal of AKT-Scan AI is to support early-stage anticancer compound prioritization by identifying molecules that are predicted to be active against AKT1 and by enriching these predictions with medicinal chemistry interpretation.
+The goal of AKT-Scan AI is to support early-stage anticancer compound prioritization by identifying molecules that are predicted to be active against AKT1 and by enriching these predictions with medicinal chemistry interpretation. The app is available at -
+
+**https://aktscanai.streamlit.app/**
 
 ---
 
