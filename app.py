@@ -1558,8 +1558,10 @@ def load_active_database_dataframe() -> pd.DataFrame:
 def render_contributor_inputs(context_key: str) -> Tuple[str, str, str, bool]:
     with st.expander("🗄️ Contributor information for predicted-active database", expanded=True):
         st.caption(
-            "Optional. Fill these fields before running prediction. Details are saved only with predicted Active compounds "
-            "and only if consent is checked. Please avoid commas in contributor fields; use underscores instead. "
+            "Optional. Fill these fields before running prediction. Predicted Active compounds are deposited "
+            "into the AKT1 Active Library only when the consent checkbox below is checked. "
+            "By default, no compounds are deposited automatically. Please avoid commas in contributor fields; "
+            "use underscores instead. "
         )
 
         contributor_name = st.text_input(
@@ -1584,7 +1586,8 @@ def render_contributor_inputs(context_key: str) -> Tuple[str, str, str, bool]:
         ).strip()
 
         save_contributor_info = st.checkbox(
-            "I agree to save this contributor information with predicted Active compounds.",
+            "I agree to deposit my predicted Active compounds into the AKT1 Active Library with this contributor information.",
+            value=False,
             key=f"{context_key}_save_contributor_info",
         )
 
@@ -1595,7 +1598,7 @@ def render_contributor_inputs(context_key: str) -> Tuple[str, str, str, bool]:
             st.warning(validation_error)
         elif save_contributor_info:
             st.caption(
-                f"Contributor record ready: {contributor_name} · "
+                f"Database deposition enabled for predicted Active compounds: {contributor_name} · "
                 f"{contributor_affiliation} · {contributor_email}"
             )
 
@@ -1637,7 +1640,7 @@ def validate_contributor_inputs(
         missing_fields.append("email address")
     if missing_fields:
         return (
-            "Contributor consent is checked, but the following field(s) are empty: "
+            "Database deposition consent is checked, but the following field(s) are empty: "
             + ", ".join(missing_fields)
             + ". Please fill them before running prediction."
         )
@@ -1831,10 +1834,11 @@ def render_active_library_method_note() -> None:
             medicinal-chemistry analysis.
             </p>
             <p class="small-note">
-            Future implementation may connect this predicted-active library with structure-based drug design
-            workflows, including docking, pharmacophore modeling, molecular dynamics prioritization,
-            scaffold clustering, and lead-optimization campaigns. All entries remain computational predictions
-            and require experimental validation.
+            Predicted Active compounds are deposited into this library only when the user explicitly checks
+            the contributor-section consent box before prediction. Future implementation may connect this
+            predicted-active library with structure-based drug design workflows, including docking,
+            pharmacophore modeling, molecular dynamics prioritization, scaffold clustering, and lead-optimization
+            campaigns. All entries remain computational predictions and require experimental validation.
             </p>
         </div>
         """,
@@ -2043,17 +2047,22 @@ def render_single_mode(model, selected_indices: np.ndarray, threshold: float) ->
             st.session_state.single_prediction_smiles = None
             return
 
-        save_summary = save_active_results_to_database(
-            results,
-            contributor_name=contributor_name,
-            contributor_affiliation=contributor_affiliation,
-            contributor_email=contributor_email,
-            save_contributor_info=save_contributor_info,
-        )
-        if save_summary["inserted"] > 0:
-            st.success(f"Saved {save_summary['inserted']} new predicted Active compound to the database.")
-        elif save_summary["updated_existing"] > 0:
-            st.info("This predicted Active compound already exists in the database; run count was updated.")
+        if save_contributor_info:
+            save_summary = save_active_results_to_database(
+                results,
+                contributor_name=contributor_name,
+                contributor_affiliation=contributor_affiliation,
+                contributor_email=contributor_email,
+                save_contributor_info=True,
+            )
+            if save_summary["inserted"] > 0:
+                st.success(f"Saved {save_summary['inserted']} predicted Active compound to the database.")
+            elif save_summary["updated_existing"] > 0:
+                st.info("This predicted Active compound already exists in the database; run count was updated.")
+            elif save_summary.get("failed", 0) > 0:
+                st.warning("Database deposition was enabled, but the predicted Active compound could not be saved.")
+        else:
+            st.info("Database deposition is unchecked, so no predicted Active compound was saved to the database.")
 
         # Store the successful single-mode result so Streamlit reruns caused by
         # download_button clicks do not clear the output area.
@@ -2259,18 +2268,24 @@ def render_batch_mode(model, selected_indices: np.ndarray, threshold: float) -> 
         st.session_state.batch_completed = True
 
         active_to_save = int((df["Prediction"] == "Active").sum()) if "Prediction" in df.columns else 0
-        st.success(
-            f"Prediction results are ready. Preparing to save {active_to_save:,} predicted Active compound(s) to Supabase..."
-        )
 
-        db_save_summary = save_active_results_to_database(
-            results,
-            contributor_name=contributor_name,
-            contributor_affiliation=contributor_affiliation,
-            contributor_email=contributor_email,
-            save_contributor_info=save_contributor_info,
-        )
-        st.session_state.last_database_save_summary = db_save_summary
+        if save_contributor_info:
+            st.success(
+                f"Prediction results are ready. Preparing to save {active_to_save:,} predicted Active compound(s) to Supabase..."
+            )
+
+            db_save_summary = save_active_results_to_database(
+                results,
+                contributor_name=contributor_name,
+                contributor_affiliation=contributor_affiliation,
+                contributor_email=contributor_email,
+                save_contributor_info=True,
+            )
+            st.session_state.last_database_save_summary = db_save_summary
+        else:
+            st.success("Prediction results are ready.")
+            st.info("Database deposition is unchecked, so no predicted Active compounds were saved to Supabase.")
+            st.session_state.last_database_save_summary = None
 
     if st.session_state.batch_completed and st.session_state.batch_results_df is not None:
         df = st.session_state.batch_results_df
